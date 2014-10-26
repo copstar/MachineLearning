@@ -1,0 +1,101 @@
+---
+title: "ML CP"
+author: "Chris De Coster"
+date: "Sunday, October 26, 2014"
+output: html_document
+---
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. 
+These type of devices are part of the quantified self movement ? a group of enthusiasts who take measurements about themselves regularly to improve their health, 
+to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, 
+but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. 
+They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+
+More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+
+## Data 
+The training data for this project are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+### Packages used
+```{r message=FALSE, warning=FALSE}
+library(caret)
+library(randomForest)
+library(data.table)
+set.seed(1)
+```
+
+## Getting and Cleaning Data:
+Files are dowmloaded and imported using read.csv
+```{r message=FALSE, warning=FALSE}
+if(!file.exists("pml-training.csv")){
+  download.file(url="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "pml-training.csv")}
+if(!file.exists("pml-testing.csv")){
+  download.file(url="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "pml-testing.csv")}
+
+df<- read.csv(file = file.path(getwd(),'pml-training.csv'), na.strings=c('NA','','#DIV/0!'))
+df_test <- read.csv(file = file.path(getwd(), 'pml-testing.csv'), na.strings=c('NA','','#DIV/0!')) 
+
+```
+
+Next, the columns with NA values are removed and also the first 7 columns because they do not contain data of any use for the prediction.
+```{r message=FALSE, warning=FALSE}
+na <- apply(df, 2, function(x) {sum(is.na(x))})
+df <- subset(df[, which(na == 0)], select=-c(X, user_name, new_window, num_window, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp))
+```
+
+## Building the Model
+### Split data:
+I use 60% of the training data(file) to generate a training dataset and 40% for a testing dataset, partioned using the "classe " variable.
+
+```{r message=FALSE, warning=FALSE}
+inTrain <- createDataPartition(y = df$classe, p=0.60, list=FALSE)
+training <- df[inTrain,]
+testing <- df[-inTrain,]
+```
+
+### Prediction:
+We train the dataset using the randowforest function of the caret package. The number of trees to grow is 20 to ensure that every input row gets predicted at least a few times.
+```{r message=FALSE, warning=FALSE}
+model <- train(training$classe ~., data = training, method="rf", ntree = 20)
+prediction <- predict(model,newdata=training)
+confusionMatrix(prediction, training$classe)
+```
+The matrix shows an accurancy of 1, this means no error. Very good, so there is no need to use another function or adapt parameters.
+
+Now we target the testing dataset only once to get our final results:
+```{r message=FALSE, warning=FALSE}
+prediction <- predict(model,newdata=testing)
+confusionMatrix(prediction, testing$classe)
+```
+This time the matrix shows a accurancy of 0.9912, so an error of 0.0088.
+
+## Submission part:
+Apply algorithm to test data:
+
+```{r eval=FALSE}
+na <- apply(df_test, 2, function(x) {sum(is.na(x))})
+df_test <- subset(df_test[, which(na == 0)], select=-c(X, user_name, new_window, num_window, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp))
+
+test_prediction <- predict(model, newdata = df_test)
+
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+# write the predictons generated in the previsou step into files.
+pml_write_files(test_prediction)
+
+```
+
+
+
