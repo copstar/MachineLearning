@@ -73,7 +73,7 @@ Now we target the testing dataset only once to get our final results:
 prediction <- predict(model,newdata=testing)
 confusionMatrix(prediction, testing$classe)
 ```
-This time the matrix shows a accurancy of 0.9912, so an error of 0.0088.
+This time the matrix shows a accurancy of 0.989, so an error of 0.011.
 
 ## Submission part:
 Apply algorithm to test data:
